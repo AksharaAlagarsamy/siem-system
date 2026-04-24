@@ -1,0 +1,7 @@
+venv/
+venv311/
+__pycache__/
+*.pyc
+traffic.log
+output.png
+ip_traffic.png

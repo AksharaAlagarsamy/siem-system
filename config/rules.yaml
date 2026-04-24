@@ -1,0 +1,40 @@
+# config/rules.yaml
+# Each rule defines a detection condition.
+
+rules:
+  - id: RULE_001
+    name: Brute Force SSH
+    description: Multiple failed SSH login attempts from same IP
+    field: status
+    value: failed
+    threshold: 5
+    window_seconds: 60
+    severity: HIGH
+    alert: true
+
+  - id: RULE_002
+    name: Root Login Attempt
+    description: Any login attempt with username root
+    field: username
+    value: root
+    threshold: 1
+    window_seconds: 300
+    severity: CRITICAL
+    alert: true
+
+  - id: RULE_003
+    name: Off-Hours Login
+    description: Successful login between 11PM and 6AM
+    field: hour_of_day
+    range: [23, 6]
+    severity: MEDIUM
+    alert: true
+
+  - id: RULE_004
+    name: Rapid IP Cycling
+    description: Single user logging in from many different IPs
+    field: distinct_ips_per_user
+    threshold: 3
+    window_seconds: 300
+    severity: HIGH
+    alert: true
