@@ -1,71 +1,111 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import IsolationForest
+import subprocess
+from collections import defaultdict
+import time
 
 # -------------------------------
-# STEP 1: READ TCPDUMP FILE
+# REAL-TIME TCPDUMP COMMAND
 # -------------------------------
-file_path = "traffic.log"
+command = ["sudo", "tcpdump", "-i", "eth0", "-nn", "-l"]
 
-with open(file_path, "r") as f:
-    lines = f.readlines()
+process = subprocess.Popen(
+    command,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.DEVNULL,
+    text=True
+)
+
+print("🚀 Real-Time AI SIEM Started...\n")
 
 # -------------------------------
-# STEP 2: COUNT PACKETS PER SECOND
+# STORE PACKETS PER SECOND
 # -------------------------------
-time_counts = {}
+time_counts = defaultdict(int)
 
-for line in lines:
+# -------------------------------
+# LIVE PACKET MONITORING
+# -------------------------------
+for line in process.stdout:
+
     try:
-        # Extract timestamp (HH:MM:SS)
-        time = line.split()[0].split(".")[0]
+        print(line.strip())
 
-        if time in time_counts:
-            time_counts[time] += 1
-        else:
-            time_counts[time] = 1
-    except:
-        continue
+        # -------------------------------
+        # EXTRACT TIMESTAMP (HH:MM:SS)
+        # -------------------------------
+        packet_time = line.split()[0].split(".")[0]
 
-# Convert to DataFrame
-df = pd.DataFrame(list(time_counts.items()), columns=["time", "event_count"])
+        # Increase packet count
+        time_counts[packet_time] += 1
 
-# -------------------------------
-# STEP 3: ANOMALY DETECTION
-# -------------------------------
-model = IsolationForest(contamination=0.2, random_state=42)
-df["anomaly"] = model.fit_predict(df[["event_count"]])
+        # -------------------------------
+        # CONVERT TO DATAFRAME
+        # -------------------------------
+        df = pd.DataFrame(
+            list(time_counts.items()),
+            columns=["time", "event_count"]
+        )
 
-# -------------------------------
-# STEP 4: OUTPUT
-# -------------------------------
-print("\n===== SIEM OUTPUT =====\n")
-print(df)
+        # -------------------------------
+        # ANOMALY DETECTION
+        # -------------------------------
+        if len(df) > 5:
 
-# Alert
-if -1 in df["anomaly"].values:
-    print("\n⚠ ALERT: Suspicious network activity detected!\n")
-else:
-    print("\n✅ Normal traffic\n")
+            model = IsolationForest(
+                contamination=0.2,
+                random_state=42
+            )
 
-# -------------------------------
-# STEP 5: GRAPH
-# -------------------------------
-plt.figure()
-plt.plot(df["event_count"])
-plt.title("Network Traffic Activity")
-plt.xlabel("Time Index")
-plt.ylabel("Packet Count")
+            df["anomaly"] = model.fit_predict(
+                df[["event_count"]]
+            )
 
-plt.savefig("output.png")
+            # -------------------------------
+            # OUTPUT
+            # -------------------------------
+            print("\n===== SIEM OUTPUT =====\n")
+            print(df)
 
-print("📈 Graph saved as output.png")
+            # -------------------------------
+            # ALERT SYSTEM
+            # -------------------------------
+            if -1 in df["anomaly"].values:
+                print("\n⚠ ALERT: Suspicious network activity detected!\n")
+            else:
+                print("\n✅ Normal traffic\n")
 
-# -------------------------------
-# STEP 6: ANOMALY DETAILS
-# -------------------------------
-print("\n===== ANOMALY DETAILS =====\n")
+            # -------------------------------
+            # GRAPH
+            # -------------------------------
+            plt.clf()
 
-for i in range(len(df)):
-    if df["anomaly"][i] == -1:
-        print(f"🚨 Time {df['time'][i]} → packets = {df['event_count'][i]}")
+            plt.plot(df["event_count"])
+
+            plt.title("Network Traffic Activity")
+            plt.xlabel("Time Index")
+            plt.ylabel("Packet Count")
+
+            plt.tight_layout()
+
+            plt.savefig("output.png")
+
+            print("📈 Graph saved as output.png")
+
+            # -------------------------------
+            # ANOMALY DETAILS
+            # -------------------------------
+            print("\n===== ANOMALY DETAILS =====\n")
+
+            for i in range(len(df)):
+                if df["anomaly"][i] == -1:
+                    print(
+                        f"🚨 Time {df['time'][i]} "
+                        f"→ packets = {df['event_count'][i]}"
+                    )
+
+    except Exception as e:
+        print("Error:", e)
+
+    time.sleep(0.1)
