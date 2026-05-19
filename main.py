@@ -1,66 +1,62 @@
-# main.py
-"""
-Orchestrates the full SIEM pipeline.
-
-Usage:
-  python main.py --mode ingest     # Start log ingestion (file watcher)
-  python main.py --mode consume    # Start processing consumer
-  python main.py --mode simulate   # Run test scenario
-  python main.py --mode all        # Run everything (for dev)
-"""
-
 import argparse
 import threading
-from ingestion.file_watcher  import FileWatcher
+import time
+import os
+from pipeline import SIEMConsumer, get_event_count
+from ingestion.file_watcher import FileWatcher
 from ingestion.log_simulator import LogSimulator
-from streaming.consumer      import SIEMConsumer
-from config.settings         import LOG_FILE_PATH
 
-
-def run_ingestion():
-    watcher = FileWatcher(filepath=LOG_FILE_PATH)
-    watcher.tail()
-
+# Only watch auth.log — syslog has too much noise
+LOG_FILES = [
+    "/var/log/auth.log",
+]
 
 def run_consumer():
-    consumer = SIEMConsumer()
-    consumer.run()
+    SIEMConsumer().run()
 
+def run_watcher(filepath):
+    FileWatcher(filepath=filepath).tail()
 
-def run_simulation():
-    sim = LogSimulator()
-    sim.run_full_scenario()
+def run_simulator():
+    time.sleep(2)
+    LogSimulator().run_full_scenario()
 
+def status_reporter():
+    while True:
+        time.sleep(30)
+        count = get_event_count()
+        if count > 0:
+            print(f"[Status] SSH events processed: {count}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Lightweight SIEM System")
-    parser.add_argument(
-        "--mode",
-        choices=["ingest", "consume", "simulate", "all"],
-        default="all"
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--simulate", action="store_true")
     args = parser.parse_args()
 
-    if args.mode == "ingest":
-        run_ingestion()
+    print("=" * 55)
+    print("  SIEM System — Real-time Security Monitoring")
+    print("  Dashboard : streamlit run dashboard.py")
+    print("  API       : python webapp.py")
+    print("=" * 55)
 
-    elif args.mode == "consume":
-        run_consumer()
+    threading.Thread(target=run_consumer,    daemon=True).start()
+    threading.Thread(target=status_reporter, daemon=True).start()
 
-    elif args.mode == "simulate":
-        run_simulation()
+    if args.simulate:
+        threading.Thread(target=run_simulator, daemon=True).start()
+        print("[Main] Simulator mode — test traffic in 2s...")
+    else:
+        for f in LOG_FILES:
+            if os.path.exists(f):
+                threading.Thread(target=run_watcher, args=(f,), daemon=True).start()
+                print(f"[Main] Watching: {f}")
+            else:
+                open(f, "w").close()
+                threading.Thread(target=run_watcher, args=(f,), daemon=True).start()
+                print(f"[Main] Created and watching: {f}")
 
-    elif args.mode == "all":
-        # Run ingestion + consumer in parallel threads
-        t_ingest  = threading.Thread(target=run_ingestion,  daemon=True)
-        t_consume = threading.Thread(target=run_consumer,   daemon=True)
-
-        t_ingest.start()
-        t_consume.start()
-
-        print("[Main] SIEM pipeline running. Press Ctrl+C to stop.")
-        try:
-            t_ingest.join()
-            t_consume.join()
-        except KeyboardInterrupt:
-            print("\n[Main] Shutting down.")
+    print("[Main] Press Ctrl+C to stop.\n")
+    try:
+        while True: time.sleep(1)
+    except KeyboardInterrupt:
+        print(f"\n[Main] Done. Events: {get_event_count()}")

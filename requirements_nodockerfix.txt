@@ -1,7 +1,3 @@
-# requirements.txt — no-Docker version
-# Remove kafka-python and elasticsearch — not needed anymore
-# Everything else stays the same
-
 scikit-learn==1.3.2
 numpy==1.26.2
 flask==3.0.0

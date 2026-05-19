@@ -1,135 +1,74 @@
-# 🔐 AI-Based SIEM System using Tcpdump & Machine Learning
+# Lightweight SIEM System
+Real-time Security Information and Event Management
 
-## 📌 Overview
+A fully functional SIEM system built in Python that monitors Linux auth logs,
+detects threats using rule-based and ML detection, and visualises alerts on a
+live dashboard. No Docker, no cloud, no paid tools required.
 
-This project is a **Security Information and Event Management (SIEM)** system built using Python.
-It analyzes real-time network traffic using `tcpdump` and applies **machine learning (Isolation Forest)** to detect anomalies and suspicious activity.
+## Quick Start
 
----
+Terminal 1 - pipeline:
+  sudo /home/kali/siem-system/venv/bin/python main.py
 
-## 🚀 Features
+Terminal 2 - API:
+  source venv/bin/activate && python webapp.py
 
-* 📡 Capture network traffic using tcpdump
-* 📊 Convert logs into structured data
-* 🤖 Detect anomalies using Isolation Forest
-* 🚨 Identify suspicious IP addresses
-* 📈 Generate traffic visualization graphs
-* ⚠ Alert system for abnormal behavior
+Terminal 3 - dashboard:
+  source venv/bin/activate && streamlit run dashboard.py
 
----
+Open browser: http://localhost:8501
 
-## 🛠 Technologies Used
+## Features
 
-* Python
-* Pandas
-* Scikit-learn
-* Matplotlib
-* Tcpdump (Kali Linux)
+- Real-time log ingestion from /var/log/auth.log
+- 6 detection rules: brute force, root login, off-hours, IP cycling, credential stuffing, new user
+- Isolation Forest ML anomaly detection (8 features, auto-retrains, persists with joblib)
+- MITRE ATT&CK technique mapping (T1110, T1078, T1090)
+- GeoIP enrichment via MaxMind GeoLite2
+- Composite risk scoring (rules + ML + threat intel) out of 100
+- Flask REST API with 8 endpoints
+- Streamlit dashboard with 5-second auto-refresh
+- SQLite storage - no external database needed
 
----
+## Detection Rules
 
-## 📂 Project Structure
+Rule                  | MITRE   | Trigger
+----------------------|---------|----------------------------------------
+BRUTE_FORCE           | T1110   | 5+ failed logins in 60s from same IP
+ROOT_LOGIN_ATTEMPT    | T1078   | Any login attempt for root
+OFF_HOURS_LOGIN       | T1078   | Successful login between 11PM-6AM
+IP_CYCLING            | T1090   | Same user from 3+ IPs in 5 min
+CREDENTIAL_STUFFING   | T1110   | 5+ usernames tried from same IP in 2 min
+NEW_USER_LOGIN        | T1078   | First-ever successful login for a username
 
-```
+## Project Structure
+
 siem-system/
-│── app.py              # Main SIEM script
-│── traffic.log         # Captured network data (ignored in Git)
-│── output.png          # Traffic graph
-│── ip_traffic.png      # IP analysis graph
-│── README.md           # Project documentation
-```
+  main.py              - Entry point
+  pipeline.py          - Queue-based event pipeline
+  webapp.py            - Flask REST API (8 endpoints)
+  dashboard.py         - Streamlit dashboard
+  enrichments.py       - GeoIP + MITRE + threat intel
+  config/settings.py   - Centralized configuration
+  ingestion/           - Log file watchers + simulator
+  parsers/             - Auth log parser + normalizer
+  detection/           - Rule engine + ML engine
+  storage/             - SQLite store
+  alerts/              - Alert dispatcher
+  tests/               - 23 unit tests (all passing)
 
----
+## Running Tests
 
-## ⚙️ Installation
+  source venv/bin/activate
+  python -m unittest discover tests/ -v
 
-### 1. Clone Repository
+## Tech Stack
 
-```
-git clone https://github.com/your-username/siem-system.git
-cd siem-system
-```
+Python, Flask, Streamlit, SQLite, scikit-learn, MaxMind GeoLite2
 
-### 2. Create Virtual Environment
+## Simulate Attack Traffic
 
-```
-python3 -m venv venv
-source venv/bin/activate
-```
+  python main.py --simulate
 
-### 3. Install Dependencies
-
-```
-pip install pandas matplotlib scikit-learn
-```
-
----
-
-## ▶️ Usage
-
-### Step 1: Capture Network Traffic
-
-```
-sudo tcpdump -i eth0 -nn > traffic.log
-```
-
-Press `CTRL + C` after some time.
-
-### Step 2: Run SIEM System
-
-```
-python app.py
-```
-
----
-
-## 📊 Output
-
-* Displays anomaly detection results in terminal
-* Identifies suspicious IP addresses
-* Saves graphs:
-
-  * `output.png`
-  * `ip_traffic.png`
-
----
-
-## 🧠 How It Works
-
-1. Tcpdump captures live network packets
-2. Logs are parsed into structured format
-3. Packet counts & IP activity are analyzed
-4. Isolation Forest detects anomalies
-5. Alerts are generated for suspicious behavior
-
----
-
-## 🚨 Example Alert
-
-```
-🚨 Suspicious IP: 172.20.10.6 → requests = 150
-```
-
----
-
-## 🔮 Future Enhancements
-
-* Real-time monitoring (live SIEM)
-* Automatic IP blocking using iptables
-* Web dashboard (Flask / Streamlit)
-* Email alert system
-* Geo-location tracking of attackers
-
----
-
-## 👩‍💻 Author
-
-Developed as part of a cybersecurity & data science project.
-
----
-
-## ⭐ Contribute
-
-Feel free to fork and improve this project!
-
----
+  sudo service ssh start
+  for i in {1..15}; do sshpass -p wrong ssh -o StrictHostKeyChecking=no root@127.0.0.1 2>/dev/null; done

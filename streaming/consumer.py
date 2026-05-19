@@ -9,8 +9,8 @@ from kafka import KafkaConsumer
 from config.settings import (
     KAFKA_BOOTSTRAP_SERVERS, KAFKA_RAW_TOPIC, KAFKA_GROUP_ID
 )
-from parser.auth_log_parser import parse_auth_log_line
-from parser.normalizer import normalize
+from parsers.auth_log_parser import parse_auth_log_line
+from parsers.normalizer import normalize
 from detection.rule_engine import RuleEngine
 from detection.ml_engine import MLEngine
 from storage.elastic_client import ElasticClient

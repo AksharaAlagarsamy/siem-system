@@ -1,99 +1,54 @@
-# ingestion/log_simulator.py
-"""
-Simulates realistic auth.log entries for local testing.
-Generates:
-  - Normal user logins
-  - Brute force attacks (rapid failed logins from same IP)
-  - Off-hours logins
-  - Root login attempts
-"""
-
 import random
 import time
-from datetime import datetime, timedelta
-from streaming.producer import SIEMProducer
+from datetime import datetime
+from pipeline import SIEMProducer
 
-# Realistic test data pools
-NORMAL_USERS  = ["alice", "bob", "carol", "dave", "eve"]
-ATTACK_IPS    = ["192.168.100.55", "10.0.0.99", "172.16.5.200"]
-NORMAL_IPS    = ["192.168.1.10", "192.168.1.20", "10.10.0.5"]
-SERVICES      = ["sshd", "sudo", "su", "login"]
+NORMAL_USERS = ["alice", "bob", "carol", "dave", "eve"]
+NORMAL_IPS   = ["192.168.1.10", "192.168.1.20", "10.10.0.5"]
 
-def make_auth_log_line(
-    timestamp: datetime,
-    status: str,      # "Accepted" or "Failed"
-    username: str,
-    ip: str,
-    service: str = "sshd"
-) -> str:
-    """Format a line that matches real auth.log format."""
-    ts = timestamp.strftime("%b %d %H:%M:%S")
-    hostname = "ubuntu-server"
+def _make_log_line(timestamp, status, username, ip):
+    ts   = timestamp.strftime("%b %d %H:%M:%S")
     port = random.randint(40000, 65000)
-
-    if status == "Accepted":
-        msg = f"Accepted password for {username} from {ip} port {port} ssh2"
-    else:
-        msg = f"Failed password for {username} from {ip} port {port} ssh2"
-
-    return f"{ts} {hostname} {service}[{random.randint(1000,9999)}]: {msg}"
-
+    pid  = random.randint(1000, 9999)
+    msg  = f"Accepted password for {username} from {ip} port {port} ssh2" \
+           if status == "Accepted" else \
+           f"Failed password for {username} from {ip} port {port} ssh2"
+    return f"{ts} ubuntu-server sshd[{pid}]: {msg}"
 
 class LogSimulator:
     def __init__(self):
         self.producer = SIEMProducer()
 
-    def simulate_normal_traffic(self, count: int = 20, delay: float = 0.5):
-        """Simulate normal user login/logout activity."""
-        print("[Simulator] Generating normal traffic...")
+    def simulate_normal_traffic(self, count=20, delay=0.3):
+        print(f"[Simulator] Sending {count} normal events...")
         for _ in range(count):
-            log = make_auth_log_line(
-                timestamp=datetime.now(),
-                status=random.choice(["Accepted", "Accepted", "Failed"]),  # mostly success
-                username=random.choice(NORMAL_USERS),
-                ip=random.choice(NORMAL_IPS)
-            )
-            self.producer.send_raw_log(log)
+            line = _make_log_line(datetime.now(),
+                random.choice(["Accepted","Accepted","Failed"]),
+                random.choice(NORMAL_USERS), random.choice(NORMAL_IPS))
+            self.producer.send_raw_log(line)
             time.sleep(delay)
 
-    def simulate_brute_force(self, attacker_ip: str = "192.168.100.55",
-                              count: int = 30, delay: float = 0.05):
-        """
-        Simulate a brute force attack: rapid failed logins
-        from a single IP against multiple usernames.
-        """
-        print(f"[Simulator] Simulating BRUTE FORCE from {attacker_ip}...")
+    def simulate_brute_force(self, ip="192.168.100.55", count=25, delay=0.05):
+        print(f"[Simulator] Brute force from {ip}...")
         for i in range(count):
-            username = random.choice(NORMAL_USERS + ["root", "admin", "test"])
-            log = make_auth_log_line(
-                timestamp=datetime.now(),
-                status="Failed",
-                username=username,
-                ip=attacker_ip
-            )
-            self.producer.send_raw_log(log)
-            print(f"  [BruteForce] Attempt {i+1}/{count} — user: {username}")
+            user = random.choice(NORMAL_USERS + ["root","admin","test"])
+            line = _make_log_line(datetime.now(), "Failed", user, ip)
+            self.producer.send_raw_log(line)
+            print(f"  Attempt {i+1}/{count} — user: {user}")
             time.sleep(delay)
 
     def simulate_off_hours_login(self):
-        """Simulate a suspicious login at 3 AM."""
-        late_night = datetime.now().replace(hour=3, minute=14, second=0)
-        log = make_auth_log_line(
-            timestamp=late_night,
-            status="Accepted",
-            username="alice",
-            ip="203.0.113.45"   # external IP
-        )
-        print(f"[Simulator] Off-hours login at 03:14 AM")
-        self.producer.send_raw_log(log)
+        late = datetime.now().replace(hour=3, minute=14, second=0)
+        line = _make_log_line(late, "Accepted", "alice", "203.0.113.45")
+        print("[Simulator] Off-hours login at 03:14 AM...")
+        self.producer.send_raw_log(line)
 
     def run_full_scenario(self):
-        """Run a complete test scenario: normal + attack traffic."""
-        print("=== Starting SIEM Test Scenario ===")
+        print("\n=== Test Scenario Starting ===")
         self.simulate_normal_traffic(count=10, delay=0.2)
-        time.sleep(1)
-        self.simulate_brute_force(count=25)
-        time.sleep(1)
+        time.sleep(0.5)
+        self.simulate_brute_force(count=20)
+        time.sleep(0.5)
         self.simulate_off_hours_login()
-        self.simulate_normal_traffic(count=5, delay=0.3)
-        print("=== Scenario complete ===")
+        self.simulate_normal_traffic(count=5, delay=0.2)
+        print("=== Done — open localhost:8501 ===\n")
