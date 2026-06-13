@@ -1,4 +1,4 @@
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/8203dd35-2afc-41f0-b1bf-b545d4de4d18" /># Lightweight SIEM System
+**Lightweight SIEM System**
 Real-time Security Information and Event Management
 
 A fully functional SIEM system built in Python that monitors Linux auth logs,
