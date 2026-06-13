@@ -1,6 +1,6 @@
 **Lightweight SIEM System**
-Real-time Security Information and Event Management
-
+**Real-time Security Information and Event Management
+**
 A fully functional SIEM system built in Python that monitors Linux auth logs,
 detects threats using rule-based and ML detection, and visualises alerts on a
 live dashboard. No Docker, no cloud, no paid tools required.
