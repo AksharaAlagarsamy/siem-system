@@ -1,9 +1,12 @@
-# Lightweight SIEM System
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/8203dd35-2afc-41f0-b1bf-b545d4de4d18" /># Lightweight SIEM System
 Real-time Security Information and Event Management
 
 A fully functional SIEM system built in Python that monitors Linux auth logs,
 detects threats using rule-based and ML detection, and visualises alerts on a
 live dashboard. No Docker, no cloud, no paid tools required.
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/04a7cdc0-5426-4f53-9697-3750e1ab1504" />
+
+
 
 ## Quick Start
 
